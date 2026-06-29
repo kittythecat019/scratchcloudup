@@ -1,0 +1,12 @@
+{
+  "name": "scratch-cloud-system",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "scratchattach": "^1.8.1"
+  }
+}

@@ -1,4 +1,4 @@
-```js id="jlwm38"
+```js id="jlwm55"
 require("dotenv").config();
 
 const Scratch = require("scratch-api");
@@ -22,7 +22,7 @@ const TARGET_PROJECT =
 const chars =
 "1234567890qwertyuiopasdfghjklzxcvbnm,.@#₫_&-+()/*\"':;!?=\\][}{%~ ";
 
-// map encode
+// encode map
 const encodeMap = {};
 
 for(let i = 0; i < chars.length; i++){
@@ -35,8 +35,7 @@ for(let i = 0; i < chars.length; i++){
 // encode text
 function encode(text){
 
-    text = text
-        .toLowerCase();
+    text = text.toLowerCase();
 
     let result = "";
 
@@ -44,8 +43,7 @@ function encode(text){
 
         if(encodeMap[char]){
 
-            result +=
-                encodeMap[char];
+            result += encodeMap[char];
 
         }
 
@@ -72,7 +70,7 @@ function encodeComment(
 
 }
 
-// packet comments
+// packet
 function makePackets(comments){
 
     const packets = [];
@@ -112,15 +110,13 @@ function makePackets(comments){
 
 async function start(){
 
-    console.log("Logging in...");
+    console.log("Login...");
 
     const session =
         await Scratch.UserSession.create(
             USERNAME,
             PASSWORD
         );
-
-    console.log("Connecting cloud...");
 
     const cloud =
         await session.cloudSession(
@@ -129,111 +125,61 @@ async function start(){
 
     console.log("Cloud connected");
 
-    let lastCommentCount = 0;
+    let packetIndex = 0;
 
     async function update(){
 
         try{
 
-            // PROJECT STATS
-            const statsRes =
-                await fetch(
-                    `https://api.scratch.mit.edu/projects/${TARGET_PROJECT}`
-                );
-
-            const statsData =
-                await statsRes.json();
-
-            const views =
-                statsData.stats.views || 0;
-
-            const loves =
-                statsData.stats.loves || 0;
-
-            const favorites =
-                statsData.stats.favorites || 0;
-
-            // COMMENTS
-            const commentsRes =
+            // comments api
+            const res =
                 await fetch(
                     `https://api.scratch.mit.edu/users/${TARGET_USERNAME}/projects/${TARGET_PROJECT}/comments`
                 );
 
             const comments =
-                await commentsRes.json();
+                await res.json();
 
-            // update stats
-            await cloud.set(
-                "☁ views",
-                views
-            );
+            // mới nhất trước
+            comments.reverse();
 
-            await cloud.set(
-                "☁ loves",
-                loves
-            );
+            // lấy tối đa 100 comments
+            const latest =
+                comments.slice(0,100);
 
-            await cloud.set(
-                "☁ favorites",
-                favorites
-            );
+            // packets
+            const packets =
+                makePackets(latest);
 
+            if(
+                packets.length === 0
+            ) return;
+
+            // loop packet
+            if(
+                packetIndex >=
+                packets.length
+            ){
+
+                packetIndex = 0;
+
+            }
+
+            const packet =
+                packets[packetIndex];
+
+            // gửi cloud
             await cloud.set(
-                "☁ comments",
-                comments.length
+                "☁ comment",
+                packet
             );
 
             console.log(
-                "Stats updated"
+                "Sent packet:",
+                packetIndex + 1
             );
 
-            // nếu có comment mới
-            if(
-                comments.length !==
-                lastCommentCount
-            ){
-
-                console.log(
-                    "New comments"
-                );
-
-                lastCommentCount =
-                    comments.length;
-
-                // mới nhất trước
-                comments.reverse();
-
-                // tối đa 30 comments
-                const latest =
-                    comments.slice(0,30);
-
-                // encode packets
-                const packets =
-                    makePackets(latest);
-
-                // gửi cloud
-                for(
-                    let i = 0;
-                    i < packets.length;
-                    i++
-                ){
-
-                    const cloudName =
-                        `☁ comment${i+1}`;
-
-                    await cloud.set(
-                        cloudName,
-                        packets[i]
-                    );
-
-                    console.log(
-                        cloudName,
-                        packets[i]
-                    );
-
-                }
-
-            }
+            packetIndex++;
 
         }catch(err){
 
@@ -245,8 +191,8 @@ async function start(){
 
     update();
 
-    // update mỗi 15 giây
-    setInterval(update,15000);
+    // mỗi 5 giây gửi batch tiếp theo
+    setInterval(update,5000);
 
 }
 

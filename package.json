@@ -1,12 +1,12 @@
 {
-  "name": "scratch-cloud-system",
+  "name": "scratch-cloud-comments",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "scratchattach": "^1.8.1"
+    "scratch-api": "^0.11.0",
+    "dotenv": "^16.4.5"
   }
 }

@@ -1,40 +1,42 @@
+```js id="jlwm38"
 require("dotenv").config();
 
-const scratchattach =
-require("scratchattach");
+const Scratch = require("scratch-api");
 
 const USERNAME =
-process.env.USERNAME;
+    process.env.USERNAME;
 
 const PASSWORD =
-process.env.PASSWORD;
+    process.env.PASSWORD;
 
 const PROJECT_ID =
-process.env.PROJECT_ID;
+    process.env.PROJECT_ID;
 
 const TARGET_USERNAME =
-process.env.TARGET_USERNAME;
+    process.env.TARGET_USERNAME;
 
 const TARGET_PROJECT =
-process.env.TARGET_PROJECT;
+    process.env.TARGET_PROJECT;
 
 // bảng ký tự
 const chars =
 "1234567890qwertyuiopasdfghjklzxcvbnm,.@#₫_&-+()/*\"':;!?=\\][}{%~ ";
 
+// map encode
 const encodeMap = {};
 
 for(let i = 0; i < chars.length; i++){
 
     encodeMap[chars[i]] =
-    String(i + 10).padStart(2,"0");
+        String(i + 10).padStart(2,"0");
 
 }
 
+// encode text
 function encode(text){
 
-    text =
-    text.toLowerCase();
+    text = text
+        .toLowerCase();
 
     let result = "";
 
@@ -43,7 +45,7 @@ function encode(text){
         if(encodeMap[char]){
 
             result +=
-            encodeMap[char];
+                encodeMap[char];
 
         }
 
@@ -53,11 +55,13 @@ function encode(text){
 
 }
 
+// encode comment
 function encodeComment(
     username,
     comment
 ){
 
+    // :
     const colon = "61";
 
     return (
@@ -68,6 +72,7 @@ function encodeComment(
 
 }
 
+// packet comments
 function makePackets(comments){
 
     const packets = [];
@@ -79,11 +84,12 @@ function makePackets(comments){
     ){
 
         const group =
-        comments.slice(i,i+10);
+            comments.slice(i,i+10);
 
+        // batch id
         let packet =
-        String((i / 10) + 1)
-        .padStart(2,"0");
+            String((i / 10) + 1)
+            .padStart(2,"0");
 
         for(const c of group){
 
@@ -106,110 +112,126 @@ function makePackets(comments){
 
 async function start(){
 
-    console.log("Login...");
+    console.log("Logging in...");
 
     const session =
-    await scratchattach.login(
-        USERNAME,
-        PASSWORD
-    );
+        await Scratch.UserSession.create(
+            USERNAME,
+            PASSWORD
+        );
 
-    console.log("Connected");
+    console.log("Connecting cloud...");
 
     const cloud =
-    await session.connect_cloud(
-        PROJECT_ID
-    );
+        await session.cloudSession(
+            PROJECT_ID
+        );
 
     console.log("Cloud connected");
 
-    let packetIndex = 0;
+    let lastCommentCount = 0;
 
     async function update(){
 
         try{
 
-            // stats
+            // PROJECT STATS
             const statsRes =
-            await fetch(
-            `https://api.scratch.mit.edu/projects/${TARGET_PROJECT}`
-            );
+                await fetch(
+                    `https://api.scratch.mit.edu/projects/${TARGET_PROJECT}`
+                );
 
             const statsData =
-            await statsRes.json();
+                await statsRes.json();
 
             const views =
-            statsData.stats.views || 0;
+                statsData.stats.views || 0;
 
             const loves =
-            statsData.stats.loves || 0;
+                statsData.stats.loves || 0;
 
             const favorites =
-            statsData.stats.favorites || 0;
+                statsData.stats.favorites || 0;
 
-            // comments
+            // COMMENTS
             const commentsRes =
-            await fetch(
-            `https://api.scratch.mit.edu/users/${TARGET_USERNAME}/projects/${TARGET_PROJECT}/comments`
-            );
+                await fetch(
+                    `https://api.scratch.mit.edu/users/${TARGET_USERNAME}/projects/${TARGET_PROJECT}/comments`
+                );
 
             const comments =
-            await commentsRes.json();
+                await commentsRes.json();
 
             // update stats
-            await cloud.set_var(
-                "view",
+            await cloud.set(
+                "☁ views",
                 views
             );
 
-            await cloud.set_var(
-                "love",
+            await cloud.set(
+                "☁ loves",
                 loves
             );
 
-            await cloud.set_var(
-                "favo",
+            await cloud.set(
+                "☁ favorites",
                 favorites
             );
 
-            await cloud.set_var(
-                "remi",
+            await cloud.set(
+                "☁ comments",
                 comments.length
             );
 
-            // packets
-            comments.reverse();
+            console.log(
+                "Stats updated"
+            );
 
-            const latest =
-            comments.slice(0,100);
-
-            const packets =
-            makePackets(latest);
-
+            // nếu có comment mới
             if(
-                packets.length > 0
+                comments.length !==
+                lastCommentCount
             ){
 
-                if(
-                    packetIndex >=
-                    packets.length
+                console.log(
+                    "New comments"
+                );
+
+                lastCommentCount =
+                    comments.length;
+
+                // mới nhất trước
+                comments.reverse();
+
+                // tối đa 30 comments
+                const latest =
+                    comments.slice(0,30);
+
+                // encode packets
+                const packets =
+                    makePackets(latest);
+
+                // gửi cloud
+                for(
+                    let i = 0;
+                    i < packets.length;
+                    i++
                 ){
 
-                    packetIndex = 0;
+                    const cloudName =
+                        `☁ comment${i+1}`;
+
+                    await cloud.set(
+                        cloudName,
+                        packets[i]
+                    );
+
+                    console.log(
+                        cloudName,
+                        packets[i]
+                    );
 
                 }
-
-                await cloud.set_var(
-                    "comment",
-                    packets[packetIndex]
-                );
-
-                console.log(
-                    "Packet:",
-                    packetIndex + 1
-                );
-
-                packetIndex++;
 
             }
 
@@ -223,8 +245,10 @@ async function start(){
 
     update();
 
-    setInterval(update,5000);
+    // update mỗi 15 giây
+    setInterval(update,15000);
 
 }
 
 start();
+```

@@ -1,4 +1,3 @@
-```js id="jlwm55"
 require("dotenv").config();
 
 const Scratch = require("scratch-api");
@@ -197,4 +196,3 @@ async function start(){
 }
 
 start();
-```

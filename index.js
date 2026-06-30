@@ -6,7 +6,7 @@ const http = require("http");
 http.createServer((req, res) => {
     res.end("alive");
 }).listen(process.env.PORT || 3000, () => {
-    console.log("HTTP server running");
+    console.log("🌐 HTTP server running");
 });
 
 // ================= ENV =================
@@ -18,11 +18,11 @@ const TARGET_PROJECT = process.env.TARGET_PROJECT;
 
 // ================= CRASH PROTECTION =================
 process.on("uncaughtException", (err) => {
-    console.log("Crash:", err.message);
+    console.log("❌ Crash:", err.message);
 });
 
 process.on("unhandledRejection", (err) => {
-    console.log("Promise error:", err);
+    console.log("❌ Promise error:", err);
 });
 
 // ================= CHAR MAP =================
@@ -102,16 +102,15 @@ function cloudSet(cloud, name, value) {
 
 // ================= MAIN =================
 async function start() {
-    console.log("Logging in...");
+    console.log("🔑 Logging in...");
 
     const session = await createSession(USERNAME, PASSWORD);
     const cloud = await createCloud(session, PROJECT_ID);
 
-    console.log("Cloud connected");
+    console.log("☁ Cloud connected");
 
     let lastCommentId = null;
     let isFast = false;
-    let normalPacketIndex = 0;
 
     async function update() {
         try {
@@ -130,7 +129,7 @@ async function start() {
                 cloudSet(cloud, "☁ favo", s.favorites || 0);
                 cloudSet(cloud, "☁ remi", s.remixes || 0);
 
-                console.log("Stats OK");
+                console.log("📊 Stats OK");
             } catch (e) {
                 console.log("Stats error");
             }
@@ -160,13 +159,13 @@ async function start() {
 
             // ================= FAST MODE =================
             if (hasNew && !isFast) {
-                console.log("FAST MODE");
+                console.log("🔥 FAST MODE");
 
                 isFast = true;
 
                 for (let i = 0; i < packets.length; i++) {
                     cloudSet(cloud, "☁ comment", packets[i]);
-                    await new Promise(r => setTimeout(r, 3000)); // chống spam
+                    await new Promise(r => setTimeout(r, 150)); // chống spam
                 }
 
                 isFast = false;
@@ -174,30 +173,15 @@ async function start() {
 
             // ================= NORMAL MODE =================
             else {
-                if (
-    normalPacketIndex >= packets.length
-) {
-    normalPacketIndex = 0;
-}
-
-cloudSet(
-    cloud,
-    "☁ comment",
-    packets[normalPacketIndex]
-);
-
-console.log(
-    `NORMAL PACKET ${normalPacketIndex + 1}/${packets.length}`
-);
-
-normalPacketIndex++;
+                cloudSet(cloud, "☁ comment", packets[0]);
+                console.log("🟢 NORMAL MODE");
             }
 
         } catch (err) {
             console.log("Update error:", err.message);
         }
 
-        setTimeout(update, 15000);
+        setTimeout(update, 5000);
     }
 
     update();

@@ -1,9 +1,8 @@
 require("dotenv").config();
-
 const Scratch = require("scratch-api");
 const http = require("http");
 
-// ================= HTTP SERVER =================
+// ================= HTTP SERVER (KEEP ALIVE FOR UPTIMEROBOT) =================
 http.createServer((req, res) => {
     res.end("alive");
 }).listen(process.env.PORT || 3000, () => {
@@ -31,202 +30,82 @@ const chars =
 "1234567890qwertyuiopasdfghjklzxcvbnm,.@#₫_&-+()/*\"':;!?=\\][}{%~ ";
 
 const encodeMap = {};
-
 for (let i = 0; i < chars.length; i++) {
-    encodeMap[chars[i]] =
-        String(i + 10).padStart(2, "0");
+    encodeMap[chars[i]] = String(i + 10).padStart(2, "0");
 }
 
 // ================= ENCODE =================
 function encode(text) {
-
-    text = (text || "")
-        .toLowerCase();
-
+    text = (text || "").toLowerCase();
     let result = "";
 
     for (const c of text) {
-
-        result +=
-            encodeMap[c] ??
-            encodeMap[" "];
-
+        result += encodeMap[c] ?? encodeMap[" "];
     }
 
     return result;
-
 }
 
 function encodeComment(user, comment) {
-
-    // 61 = :
-    return (
-        encode(user) +
-        "61" +
-        encode(comment)
-    );
-
+    return encode(user) + "61" + encode(comment);
 }
 
 // ================= PACKETS =================
 function makePackets(comments) {
-
     const packets = [];
 
-    for (
-        let i = 0;
-        i < comments.length;
-        i += 10
-    ) {
+    for (let i = 0; i < comments.length; i += 10) {
+        const group = comments.slice(i, i + 10);
 
-        const group =
-            comments.slice(i, i + 10);
-
-        // encode batch number
-        let packet =
-            String(i / 10 + 1)
+        let packet = String(i / 10 + 1)
             .split("")
             .map(c => encodeMap[c] || "")
             .join("");
 
-        // separator
         packet += "00";
 
         for (const c of group) {
-
-            packet += encodeComment(
-                c.author.username,
-                c.content
-            );
-
+            packet += encodeComment(c.author.username, c.content);
             packet += "00";
-
         }
 
         packets.push(packet);
-
     }
 
     return packets;
-
-}
-
-// ================= SAFE FETCH =================
-async function safeFetch(url) {
-
-    const res = await fetch(url);
-
-    const text = await res.text();
-
-    // detect html/xml
-    if (
-        text.startsWith("<") ||
-        text.startsWith("<!DOCTYPE") ||
-        text.startsWith("<?xml")
-    ) {
-
-        console.log("⚠ HTML/XML DETECTED");
-        console.log(text.slice(0, 200));
-
-        throw new Error("HTML/XML RESPONSE");
-
-    }
-
-    return JSON.parse(text);
-
 }
 
 // ================= SCRATCH SESSION =================
 function createSession(username, password) {
-
     return new Promise((resolve, reject) => {
-
-        Scratch.UserSession.create(
-            username,
-            password,
-            (err, session) => {
-
-                if (err) {
-                    return reject(err);
-                }
-
-                resolve(session);
-
-            }
-        );
-
+        Scratch.UserSession.create(username, password, (err, session) => {
+            if (err) return reject(err);
+            resolve(session);
+        });
     });
-
 }
 
 function createCloud(session, projectId) {
-
     return new Promise((resolve, reject) => {
-
-        session.cloudSession(
-            projectId,
-            (err, cloud) => {
-
-                if (err) {
-                    return reject(err);
-                }
-
-                resolve(cloud);
-
-            }
-        );
-
+        session.cloudSession(projectId, (err, cloud) => {
+            if (err) return reject(err);
+            resolve(cloud);
+        });
     });
-
 }
 
 function cloudSet(cloud, name, value) {
-
     try {
-
-        cloud.set(
-            name,
-            String(value)
-        );
-
-    } catch (e) {
-
-        console.log(
-            "Cloud error:",
-            e.message
-        );
-
-    }
-
-}
-
-// ================= SLEEP =================
-function sleep(ms) {
-
-    return new Promise(
-        r => setTimeout(r, ms)
-    );
-
+        cloud.set(name, String(value));
+    } catch (e) {}
 }
 
 // ================= MAIN =================
 async function start() {
-
     console.log("Logging in...");
 
-    const session =
-        await createSession(
-            USERNAME,
-            PASSWORD
-        );
-
-    console.log("Connecting cloud...");
-
-    const cloud =
-        await createCloud(
-            session,
-            PROJECT_ID
-        );
+    const session = await createSession(USERNAME, PASSWORD);
+    const cloud = await createCloud(session, PROJECT_ID);
 
     console.log("Cloud connected");
 
@@ -234,213 +113,78 @@ async function start() {
     let isFast = false;
 
     async function update() {
-
         try {
 
             // ================= STATS =================
             try {
-
-                const statsData =
-                    await safeFetch(
-                        `https://api.scratch.mit.edu/projects/${TARGET_PROJECT}?t=${Date.now()}`
-                    );
-
-                const s =
-                    statsData?.stats || {};
-
-                cloudSet(
-                    cloud,
-                    "☁ view",
-                    s.views || 0
+                const statsRes = await fetch(
+                    `https://api.scratch.mit.edu/projects/${TARGET_PROJECT}?t=${Date.now()}`
                 );
 
-                cloudSet(
-                    cloud,
-                    "☁ love",
-                    s.loves || 0
-                );
+                const data = await statsRes.json();
+                const s = data?.stats || {};
 
-                cloudSet(
-                    cloud,
-                    "☁ favo",
-                    s.favorites || 0
-                );
+                cloudSet(cloud, "☁ view", s.views || 0);
+                cloudSet(cloud, "☁ love", s.loves || 0);
+                cloudSet(cloud, "☁ favo", s.favorites || 0);
+                cloudSet(cloud, "☁ remi", s.remixes || 0);
 
-                cloudSet(
-                    cloud,
-                    "☁ remi",
-                    s.remixes || 0
-                );
-
-                console.log(
-                    "Stats updated"
-                );
-
+                console.log("Stats OK");
             } catch (e) {
-
-                console.log(
-                    "Stats error:",
-                    e.message
-                );
-
+                console.log("Stats error");
             }
 
             // ================= COMMENTS =================
-            let comments =
-                await safeFetch(
-                    `https://api.scratch.mit.edu/users/${TARGET_USERNAME}/projects/${TARGET_PROJECT}/comments?t=${Date.now()}`
-                );
+            const res = await fetch(
+                `https://api.scratch.mit.edu/users/${TARGET_USERNAME}/projects/${TARGET_PROJECT}/comments`
+            );
 
-            if (
-                !Array.isArray(comments)
-            ) {
+            let comments = await res.json();
+            if (!Array.isArray(comments)) comments = [];
 
-                comments = [];
-
-            }
-
-            if (
-                comments.length === 0
-            ) {
-
-                console.log(
-                    "No comments"
-                );
-
-                setTimeout(
-                    update,
-                    10000
-                );
-
+            if (comments.length === 0) {
+                setTimeout(update, 5000);
                 return;
-
             }
 
             comments.reverse();
 
-            const latest =
-                comments.slice(0, 100);
+            const latest = comments.slice(0, 100);
+            const packets = makePackets(latest);
 
-            const packets =
-                makePackets(latest);
+            const currentId = comments[0]?.id;
+            const hasNew = currentId && currentId !== lastCommentId;
 
-            // newest comment
-            const currentId =
-                comments[0]?.id;
-
-            const hasNew =
-                currentId &&
-                currentId !==
-                lastCommentId;
-
-            lastCommentId =
-                currentId;
+            lastCommentId = currentId;
 
             // ================= FAST MODE =================
-            if (
-                hasNew &&
-                !isFast
-            ) {
-
-                console.log(
-                    "FAST MODE"
-                );
+            if (hasNew && !isFast) {
+                console.log("FAST MODE");
 
                 isFast = true;
 
-                for (
-                    let i = 0;
-                    i < packets.length;
-                    i++
-                ) {
-
-                    cloudSet(
-                        cloud,
-                        "☁ comment",
-                        packets[i]
-                    );
-
-                    console.log(
-                        `Packet ${i + 1}/${packets.length}`
-                    );
-
-                    // anti spam
-                    await sleep(8000);
-
+                for (let i = 0; i < packets.length; i++) {
+                    cloudSet(cloud, "☁ comment", packets[i]);
+                    await new Promise(r => setTimeout(r, 3000)); // chống spam
                 }
 
                 isFast = false;
-
-                console.log(
-                    "NORMAL MODE"
-                );
-
             }
 
             // ================= NORMAL MODE =================
             else {
-
-                cloudSet(
-                    cloud,
-                    "☁ comment",
-                    packets[0]
-                );
-
-                console.log(
-                    "NORMAL MODE"
-                );
-
+                cloudSet(cloud, "☁ comment", packets[0]);
+                console.log("NORMAL MODE");
             }
 
         } catch (err) {
-
-            console.log(
-                "Update error:",
-                err.message
-            );
-
+            console.log("Update error:", err.message);
         }
 
-        // normal update speed
-        setTimeout(
-            update,
-            15000
-        );
-
+        setTimeout(update, 15000);
     }
 
     update();
-
 }
 
-// ================= AUTO RETRY LOGIN =================
-async function boot() {
-
-    while (true) {
-
-        try {
-
-            await start();
-
-            break;
-
-        } catch (err) {
-
-            console.log(
-                "Fatal:",
-                err.message
-            );
-
-            console.log(
-                "Retry login in 30s..."
-            );
-
-            await sleep(30000);
-
-        }
-
-    }
-
-}
-
-boot();
+start().catch(err => console.error("Fatal:", err));

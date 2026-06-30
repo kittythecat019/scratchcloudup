@@ -111,6 +111,7 @@ async function start() {
 
     let lastCommentId = null;
     let isFast = false;
+    let normalPacketIndex = 0;
 
     async function update() {
         try {
@@ -173,8 +174,23 @@ async function start() {
 
             // ================= NORMAL MODE =================
             else {
-                cloudSet(cloud, "☁ comment", packets[0]);
-                console.log("NORMAL MODE");
+                if (
+    normalPacketIndex >= packets.length
+) {
+    normalPacketIndex = 0;
+}
+
+cloudSet(
+    cloud,
+    "☁ comment",
+    packets[normalPacketIndex]
+);
+
+console.log(
+    `NORMAL PACKET ${normalPacketIndex + 1}/${packets.length}`
+);
+
+normalPacketIndex++;
             }
 
         } catch (err) {

@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
-    "scratch-api": "^0.11.0"
+    "scratch-api": "^1.1.12"
   }
 }

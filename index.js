@@ -55,11 +55,11 @@ function encode(text) {
     }
 
     return result;
+
 }
 
 function encodeComment(user, comment) {
 
-    // 61 = :
     return (
         encode(user) +
         "61" +
@@ -85,7 +85,6 @@ function makePackets(comments) {
             .map(c => encodeMap[c] || "")
             .join("");
 
-        // separator
         packet += "00";
 
         for (const c of group) {
@@ -110,9 +109,14 @@ function makePackets(comments) {
 // ================= SAFE FETCH =================
 async function safeFetch(url) {
 
+    console.log("FETCH:", url);
+
     const res = await fetch(url);
 
     const text = await res.text();
+
+    // debug response
+    console.log(text.slice(0, 120));
 
     // detect html/xml
     if (
@@ -122,7 +126,6 @@ async function safeFetch(url) {
     ) {
 
         console.log("⚠ HTML/XML DETECTED");
-        console.log(text.slice(0, 200));
 
         throw new Error("HTML/XML RESPONSE");
 
@@ -230,6 +233,7 @@ async function start() {
 
     let lastCommentId = null;
     let isFast = false;
+    let normalPacketIndex = 0;
 
     async function update() {
 
@@ -295,13 +299,14 @@ async function start() {
 
                 console.log("No comments");
 
-                setTimeout(update, 10000);
+                setTimeout(update, 15000);
 
                 return;
 
             }
 
-            comments.reverse();
+            // KHÔNG reverse nữa
+            // API đã newest first sẵn
 
             const latest =
                 comments.slice(0, 100);
@@ -315,12 +320,19 @@ async function start() {
                 ? comments[0].id
                 : null;
 
+            console.log(
+                "Newest comment:",
+                currentId
+            );
+
             const hasNew =
                 currentId &&
                 currentId !== lastCommentId;
 
-            lastCommentId =
-                currentId;
+            // lần đầu chạy
+            if (lastCommentId === null) {
+                lastCommentId = currentId;
+            }
 
             // ================= FAST MODE =================
             if (
@@ -331,6 +343,8 @@ async function start() {
                 console.log("FAST MODE");
 
                 isFast = true;
+
+                lastCommentId = currentId;
 
                 for (
                     let i = 0;
@@ -348,27 +362,36 @@ async function start() {
                         `⚡ Packet ${i + 1}/${packets.length}`
                     );
 
-                    // anti spam
                     await sleep(6700);
 
                 }
 
                 isFast = false;
 
-                console.log("NORMAL MODE");
+                console.log("BACK TO NORMAL");
 
             }
 
             // ================= NORMAL MODE =================
             else {
 
+                if (
+                    normalPacketIndex >= packets.length
+                ) {
+                    normalPacketIndex = 0;
+                }
+
                 cloudSet(
                     cloud,
                     "☁ comment",
-                    packets[0]
+                    packets[normalPacketIndex]
                 );
 
-                console.log("NORMAL MODE");
+                console.log(
+                    `NORMAL PACKET ${normalPacketIndex + 1}/${packets.length}`
+                );
+
+                normalPacketIndex++;
 
             }
 

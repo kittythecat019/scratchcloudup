@@ -6,7 +6,7 @@ const http = require("http");
 http.createServer((req, res) => {
     res.end("alive");
 }).listen(process.env.PORT || 3000, () => {
-    console.log("🌐 HTTP server running");
+    console.log("HTTP server running");
 });
 
 // ================= ENV =================
@@ -18,11 +18,11 @@ const TARGET_PROJECT = process.env.TARGET_PROJECT;
 
 // ================= CRASH PROTECTION =================
 process.on("uncaughtException", (err) => {
-    console.log("❌ Crash:", err.message);
+    console.log("Crash:", err.message);
 });
 
 process.on("unhandledRejection", (err) => {
-    console.log("❌ Promise error:", err);
+    console.log("Promise error:", err);
 });
 
 // ================= CHAR MAP =================
@@ -102,7 +102,7 @@ function cloudSet(cloud, name, value) {
 
 // ================= MAIN =================
 async function start() {
-    console.log("🔑 Logging in...");
+    console.log("Logging in...");
 
     const session = await createSession(USERNAME, PASSWORD);
     const cloud = await createCloud(session, PROJECT_ID);
@@ -129,7 +129,7 @@ async function start() {
                 cloudSet(cloud, "☁ favo", s.favorites || 0);
                 cloudSet(cloud, "☁ remi", s.remixes || 0);
 
-                console.log("📊 Stats OK");
+                console.log("stats OK");
             } catch (e) {
                 console.log("Stats error");
             }
@@ -143,7 +143,7 @@ async function start() {
             if (!Array.isArray(comments)) comments = [];
 
             if (comments.length === 0) {
-                setTimeout(update, 5000);
+                setTimeout(update, 7000);
                 return;
             }
 
@@ -159,7 +159,7 @@ async function start() {
 
             // ================= FAST MODE =================
             if (hasNew && !isFast) {
-                console.log("🔥 FAST MODE");
+                console.log("FAST MODE");
 
                 isFast = true;
 
@@ -174,14 +174,14 @@ async function start() {
             // ================= NORMAL MODE =================
             else {
                 cloudSet(cloud, "☁ comment", packets[0]);
-                console.log("🟢 NORMAL MODE");
+                console.log("NORMAL MODE");
             }
 
         } catch (err) {
             console.log("Update error:", err.message);
         }
 
-        setTimeout(update, 5000);
+        setTimeout(update, 10000);
     }
 
     update();

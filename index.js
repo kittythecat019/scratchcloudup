@@ -324,7 +324,7 @@ async function cloudSet(cloud, name, value) {
         value = String(value);
 
         console.log(
-            `☁ SET ${name} (${value.length})`
+            `SET ${name} (${value.length})`
         );
 
         cloud.set(
@@ -358,7 +358,7 @@ async function start() {
         );
 
     console.log(
-        "☁ Connecting cloud..."
+        "Connecting cloud..."
     );
 
     const cloud =
@@ -368,7 +368,7 @@ async function start() {
         );
 
     console.log(
-        "☁ Cloud connected"
+        "Cloud connected"
     );
 
     let packetIndex = 0;

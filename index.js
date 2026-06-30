@@ -55,11 +55,11 @@ function encode(text) {
     }
 
     return result;
-
 }
 
 function encodeComment(user, comment) {
 
+    // 61 = :
     return (
         encode(user) +
         "61" +
@@ -85,6 +85,7 @@ function makePackets(comments) {
             .map(c => encodeMap[c] || "")
             .join("");
 
+        // separator
         packet += "00";
 
         for (const c of group) {
@@ -109,14 +110,9 @@ function makePackets(comments) {
 // ================= SAFE FETCH =================
 async function safeFetch(url) {
 
-    console.log("FETCH:", url);
-
     const res = await fetch(url);
 
     const text = await res.text();
-
-    // debug response
-    console.log(text.slice(0, 120));
 
     // detect html/xml
     if (
@@ -125,7 +121,8 @@ async function safeFetch(url) {
         text.startsWith("<?xml")
     ) {
 
-        console.log("⚠ HTML/XML DETECTED");
+        console.log("HTML/XML DETECTED");
+        console.log(text.slice(0, 200));
 
         throw new Error("HTML/XML RESPONSE");
 
@@ -233,7 +230,6 @@ async function start() {
 
     let lastCommentId = null;
     let isFast = false;
-    let normalPacketIndex = 0;
 
     async function update() {
 
@@ -299,14 +295,13 @@ async function start() {
 
                 console.log("No comments");
 
-                setTimeout(update, 15000);
+                setTimeout(update, 10000);
 
                 return;
 
             }
 
-            // KHÔNG reverse nữa
-            // API đã newest first sẵn
+            comments.reverse();
 
             const latest =
                 comments.slice(0, 100);
@@ -320,19 +315,12 @@ async function start() {
                 ? comments[0].id
                 : null;
 
-            console.log(
-                "Newest comment:",
-                currentId
-            );
-
             const hasNew =
                 currentId &&
                 currentId !== lastCommentId;
 
-            // lần đầu chạy
-            if (lastCommentId === null) {
-                lastCommentId = currentId;
-            }
+            lastCommentId =
+                currentId;
 
             // ================= FAST MODE =================
             if (
@@ -343,8 +331,6 @@ async function start() {
                 console.log("FAST MODE");
 
                 isFast = true;
-
-                lastCommentId = currentId;
 
                 for (
                     let i = 0;
@@ -359,39 +345,30 @@ async function start() {
                     );
 
                     console.log(
-                        `⚡ Packet ${i + 1}/${packets.length}`
+                        `Packet ${i + 1}/${packets.length}`
                     );
 
-                    await sleep(6700);
+                    // anti spam
+                    await sleep(8000);
 
                 }
 
                 isFast = false;
 
-                console.log("BACK TO NORMAL");
+                console.log("NORMAL MODE");
 
             }
 
             // ================= NORMAL MODE =================
             else {
 
-                if (
-                    normalPacketIndex >= packets.length
-                ) {
-                    normalPacketIndex = 0;
-                }
-
                 cloudSet(
                     cloud,
                     "☁ comment",
-                    packets[normalPacketIndex]
+                    packets[0]
                 );
 
-                console.log(
-                    `NORMAL PACKET ${normalPacketIndex + 1}/${packets.length}`
-                );
-
-                normalPacketIndex++;
+                console.log("NORMAL MODE");
 
             }
 

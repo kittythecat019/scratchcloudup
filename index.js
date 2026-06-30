@@ -40,21 +40,21 @@ for (let i = 0; i < chars.length; i++) {
 // ================= ENCODE =================
 function encode(text) {
 
-    text = (text || "").toLowerCase();
+    text = (text || "")
+        .toLowerCase();
 
     let result = "";
 
     for (const c of text) {
 
-        if (encodeMap[c] !== undefined) {
-            result += encodeMap[c];
-        } else {
-            result += encodeMap[" "];
-        }
+        result +=
+            encodeMap[c] ??
+            encodeMap[" "];
 
     }
 
     return result;
+
 }
 
 function encodeComment(user, comment) {
@@ -73,7 +73,11 @@ function makePackets(comments) {
 
     const packets = [];
 
-    for (let i = 0; i < comments.length; i += 10) {
+    for (
+        let i = 0;
+        i < comments.length;
+        i += 10
+    ) {
 
         const group =
             comments.slice(i, i + 10);
@@ -121,7 +125,7 @@ async function safeFetch(url) {
         text.startsWith("<?xml")
     ) {
 
-        console.log("HTML/XML DETECTED");
+        console.log("⚠ HTML/XML DETECTED");
         console.log(text.slice(0, 200));
 
         throw new Error("HTML/XML RESPONSE");
@@ -143,8 +147,7 @@ function createSession(username, password) {
             (err, session) => {
 
                 if (err) {
-                    reject(err);
-                    return;
+                    return reject(err);
                 }
 
                 resolve(session);
@@ -165,8 +168,7 @@ function createCloud(session, projectId) {
             (err, cloud) => {
 
                 if (err) {
-                    reject(err);
-                    return;
+                    return reject(err);
                 }
 
                 resolve(cloud);
@@ -201,9 +203,9 @@ function cloudSet(cloud, name, value) {
 // ================= SLEEP =================
 function sleep(ms) {
 
-    return new Promise((resolve) => {
-        setTimeout(resolve, ms);
-    });
+    return new Promise(
+        r => setTimeout(r, ms)
+    );
 
 }
 
@@ -226,7 +228,7 @@ async function start() {
             PROJECT_ID
         );
 
-    console.log("☁ Cloud connected");
+    console.log("Cloud connected");
 
     let lastCommentId = null;
     let isFast = false;
@@ -243,34 +245,36 @@ async function start() {
                         `https://api.scratch.mit.edu/projects/${TARGET_PROJECT}?t=${Date.now()}`
                     );
 
-                const stats =
-                    statsData.stats || {};
+                const s =
+                    statsData?.stats || {};
 
                 cloudSet(
                     cloud,
                     "☁ view",
-                    stats.views || 0
+                    s.views || 0
                 );
 
                 cloudSet(
                     cloud,
                     "☁ love",
-                    stats.loves || 0
+                    s.loves || 0
                 );
 
                 cloudSet(
                     cloud,
                     "☁ favo",
-                    stats.favorites || 0
+                    s.favorites || 0
                 );
 
                 cloudSet(
                     cloud,
                     "☁ remi",
-                    stats.remixes || 0
+                    s.remixes || 0
                 );
 
-                console.log("Stats updated");
+                console.log(
+                    "Stats updated"
+                );
 
             } catch (e) {
 
@@ -287,15 +291,26 @@ async function start() {
                     `https://api.scratch.mit.edu/users/${TARGET_USERNAME}/projects/${TARGET_PROJECT}/comments?t=${Date.now()}`
                 );
 
-            if (!Array.isArray(comments)) {
+            if (
+                !Array.isArray(comments)
+            ) {
+
                 comments = [];
+
             }
 
-            if (comments.length === 0) {
+            if (
+                comments.length === 0
+            ) {
 
-                console.log("No comments");
+                console.log(
+                    "No comments"
+                );
 
-                setTimeout(update, 10000);
+                setTimeout(
+                    update,
+                    10000
+                );
 
                 return;
 
@@ -311,13 +326,12 @@ async function start() {
 
             // newest comment
             const currentId =
-                comments[0]
-                ? comments[0].id
-                : null;
+                comments[0]?.id;
 
             const hasNew =
                 currentId &&
-                currentId !== lastCommentId;
+                currentId !==
+                lastCommentId;
 
             lastCommentId =
                 currentId;
@@ -328,7 +342,9 @@ async function start() {
                 !isFast
             ) {
 
-                console.log("FAST MODE");
+                console.log(
+                    "FAST MODE"
+                );
 
                 isFast = true;
 
@@ -355,7 +371,9 @@ async function start() {
 
                 isFast = false;
 
-                console.log("NORMAL MODE");
+                console.log(
+                    "NORMAL MODE"
+                );
 
             }
 
@@ -368,7 +386,9 @@ async function start() {
                     packets[0]
                 );
 
-                console.log("NORMAL MODE");
+                console.log(
+                    "NORMAL MODE"
+                );
 
             }
 
@@ -381,8 +401,11 @@ async function start() {
 
         }
 
-        // update every 15s
-        setTimeout(update, 15000);
+        // normal update speed
+        setTimeout(
+            update,
+            15000
+        );
 
     }
 
@@ -398,6 +421,7 @@ async function boot() {
         try {
 
             await start();
+
             break;
 
         } catch (err) {
